@@ -1,9 +1,12 @@
 const express = require('express');
+const axios = require('axios');
+
 let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 
 const public_users = express.Router();
+
 
 // Register a new user
 public_users.post("/register", (req, res) => {
@@ -32,14 +35,74 @@ public_users.post("/register", (req, res) => {
 });
 
 
-// Get the book list available in the shop
-public_users.get('/', function (req, res) {
-  res.status(200).send(JSON.stringify(books, null, 2));
+// ======================================================
+// TASK 10
+// Get the book list using Async/Await and Axios
+// ======================================================
+
+public_users.get('/', async function (req, res) {
+
+  try {
+
+    const response = await axios.get('http://localhost:5000/books');
+
+    return res.status(200).json(response.data);
+
+  } catch (error) {
+
+    // Use the local books database as the source
+    // when the Axios request cannot be completed.
+    return res.status(200).json(books);
+
+  }
+
 });
 
 
-// Get book details based on ISBN
-public_users.get('/isbn/:isbn', function (req, res) {
+// Internal endpoint used by Axios for Task 10
+public_users.get('/books', function (req, res) {
+
+  return res.status(200).json(books);
+
+});
+
+
+// ======================================================
+// TASK 11
+// Get book details based on ISBN using Async/Await
+// and Axios
+// ======================================================
+
+public_users.get('/isbn/:isbn', async function (req, res) {
+
+  const isbn = req.params.isbn;
+
+  try {
+
+    const response = await axios.get(
+      `http://localhost:5000/books/isbn/${isbn}`
+    );
+
+    return res.status(200).json(response.data);
+
+  } catch (error) {
+
+    if (books[isbn]) {
+      return res.status(200).json(books[isbn]);
+    }
+
+    return res.status(404).json({
+      message: "Book not found"
+    });
+
+  }
+
+});
+
+
+// Internal endpoint used by Axios for Task 11
+public_users.get('/books/isbn/:isbn', function (req, res) {
+
   const isbn = req.params.isbn;
 
   if (books[isbn]) {
@@ -49,18 +112,71 @@ public_users.get('/isbn/:isbn', function (req, res) {
   return res.status(404).json({
     message: "Book not found"
   });
+
 });
 
 
-// Get book details based on author
-public_users.get('/author/:author', function (req, res) {
+// ======================================================
+// TASK 12
+// Get books by author using Async/Await and Axios
+// ======================================================
+
+public_users.get('/author/:author', async function (req, res) {
+
   const author = req.params.author;
+
+  try {
+
+    const response = await axios.get(
+      `http://localhost:5000/books/author/${encodeURIComponent(author)}`
+    );
+
+    return res.status(200).json(response.data);
+
+  } catch (error) {
+
+    const result = {};
+
+    Object.keys(books).forEach((key) => {
+
+      if (
+        books[key].author.toLowerCase() ===
+        author.toLowerCase()
+      ) {
+        result[key] = books[key];
+      }
+
+    });
+
+    if (Object.keys(result).length > 0) {
+      return res.status(200).json(result);
+    }
+
+    return res.status(404).json({
+      message: "No books found for this author"
+    });
+
+  }
+
+});
+
+
+// Internal endpoint used by Axios for Task 12
+public_users.get('/books/author/:author', function (req, res) {
+
+  const author = req.params.author;
+
   const result = {};
 
   Object.keys(books).forEach((key) => {
-    if (books[key].author.toLowerCase() === author.toLowerCase()) {
+
+    if (
+      books[key].author.toLowerCase() ===
+      author.toLowerCase()
+    ) {
       result[key] = books[key];
     }
+
   });
 
   if (Object.keys(result).length > 0) {
@@ -70,18 +186,71 @@ public_users.get('/author/:author', function (req, res) {
   return res.status(404).json({
     message: "No books found for this author"
   });
+
 });
 
 
-// Get all books based on title
-public_users.get('/title/:title', function (req, res) {
+// ======================================================
+// TASK 13
+// Get books by title using Async/Await and Axios
+// ======================================================
+
+public_users.get('/title/:title', async function (req, res) {
+
   const title = req.params.title;
+
+  try {
+
+    const response = await axios.get(
+      `http://localhost:5000/books/title/${encodeURIComponent(title)}`
+    );
+
+    return res.status(200).json(response.data);
+
+  } catch (error) {
+
+    const result = {};
+
+    Object.keys(books).forEach((key) => {
+
+      if (
+        books[key].title.toLowerCase() ===
+        title.toLowerCase()
+      ) {
+        result[key] = books[key];
+      }
+
+    });
+
+    if (Object.keys(result).length > 0) {
+      return res.status(200).json(result);
+    }
+
+    return res.status(404).json({
+      message: "No books found with this title"
+    });
+
+  }
+
+});
+
+
+// Internal endpoint used by Axios for Task 13
+public_users.get('/books/title/:title', function (req, res) {
+
+  const title = req.params.title;
+
   const result = {};
 
   Object.keys(books).forEach((key) => {
-    if (books[key].title.toLowerCase() === title.toLowerCase()) {
+
+    if (
+      books[key].title.toLowerCase() ===
+      title.toLowerCase()
+    ) {
       result[key] = books[key];
     }
+
   });
 
   if (Object.keys(result).length > 0) {
@@ -91,11 +260,16 @@ public_users.get('/title/:title', function (req, res) {
   return res.status(404).json({
     message: "No books found with this title"
   });
+
 });
 
 
+// ======================================================
 // Get book review
+// ======================================================
+
 public_users.get('/review/:isbn', function (req, res) {
+
   const isbn = req.params.isbn;
 
   if (books[isbn]) {
@@ -105,6 +279,7 @@ public_users.get('/review/:isbn', function (req, res) {
   return res.status(404).json({
     message: "Book not found"
   });
+
 });
 
 
